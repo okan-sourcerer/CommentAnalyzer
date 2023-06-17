@@ -3,21 +3,8 @@ import time
 import requests
 from bs4 import BeautifulSoup
 
-# timer variables for debug purposes
-time_find_specific = 0
-time_find_all_next = 0
-time_extract_comment_text = 0
-time_find_review_count = 0
-time_get_source = 0
-time_init_soups = 0
-comments_dict = {}
 
-
-def parse_comments(comment_soup, main_url):
-    global time_find_specific
-    global time_find_all_next
-    global time_extract_comment_text
-
+def parse_comments(comment_soup, main_url, time_find_specific, time_find_all_next, time_extract_comment_text, comments_dict):
     comments = []
     start_find_specific = time.perf_counter()
     specific_element = comment_soup.select_one('div.lister-list')  # read all comments
@@ -45,16 +32,18 @@ def parse_comments(comment_soup, main_url):
     else:
         next_url = ""  # end of the comments
 
-    return next_url
+    return next_url, time_find_specific, time_find_all_next, time_extract_comment_text
 
 
 def scrape_for_comments(url):
-    global time_find_specific
-    global time_find_all_next
-    global time_extract_comment_text
-    global time_find_review_count
-    global time_get_source
-    global time_init_soups
+    # timer variables for debug purposes
+    time_find_specific = 0
+    time_find_all_next = 0
+    time_extract_comment_text = 0
+    time_find_review_count = 0
+    time_get_source = 0
+    time_init_soups = 0
+    comments_dict = {}
 
     tic = time.perf_counter()
     main_url = url
@@ -73,7 +62,8 @@ def scrape_for_comments(url):
     total_reviews = int(soup.select('div.header span:not(:empty,:has(div))')[0].text.split(' ')[0])
     time_find_review_count += time.perf_counter() - start_review_count
 
-    url = parse_comments(soup, main_url)
+    url, time_find_specific, time_find_all_next, time_extract_comment_text = \
+        parse_comments(soup, main_url, time_find_specific, time_find_all_next, time_extract_comment_text, comments_dict)
 
     while url != "":
         start_page_source = time.perf_counter()
@@ -86,7 +76,9 @@ def scrape_for_comments(url):
             soup = BeautifulSoup(response.text, 'lxml')  # parse page source
             time_init_soups += time.perf_counter() - start_init_soup
 
-            url = parse_comments(soup, main_url)  # parse comments and get next comment's url
+            url, time_find_specific, time_find_all_next, time_extract_comment_text = \
+                parse_comments(soup, main_url, time_find_specific, time_find_all_next,
+                               time_extract_comment_text, comments_dict)  # parse comments and get next comment's url
 
             # progress bar
             each_step = total_reviews / 50
